@@ -16,6 +16,7 @@ import java.util.Set;
 import sim.util.Bag;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -272,20 +273,47 @@ public class UAV implements Steppable {
         
         for(CellBid bid: this.cellPacket.payload.bids) {
             UAV bidder = bid.bidder;
-            double uMax = 0;
-            WorldCell bestCell = null;
-            for(int i = 0; i < bid.bids.size(); i++) {
-                double u = bid.bids.get(i);
-                WorldCell cell = bid.cells.get(i);
-                if(u >= uMax && !packet.payload.soldCells.contains(cell)) {
-                    uMax = u;
-                    bestCell = cell;
+            double totalUtility = 0;
+            
+            // compute the set of valid cells
+            int validSize = 8;
+            Set<CellBid.Bid> validCells = new LinkedHashSet<>();
+            
+            int valids = 0;
+            while(!bid.bids.isEmpty() && valids < validSize) {
+                CellBid.Bid cellBid = (CellBid.Bid) bid.bids.poll();
+                
+                if(!packet.payload.soldCells.contains(cellBid.cell)) {
+                    validCells.add(cellBid);
+                    totalUtility += cellBid.bid;
+                    valids++;
                 }
             }
+            
+            // utility-proportional random choice
+            if(validCells.size() > 0) {
+                Random r = new Random();
+                double randomValue = totalUtility * r.nextDouble();
+                                
+                double incr = 0;
+                WorldCell randomCell = null;
+                
+                Iterator<CellBid.Bid> validIter = validCells.iterator();
+                while(validIter.hasNext()) {
+                    CellBid.Bid cellBid = validIter.next();
 
-            CellAward award = new CellAward(bidder, bestCell);
-            packet.payload.awards.add(award);
-            packet.addSoldCell(bestCell);
+                    incr += cellBid.bid;
+
+                    if(incr >= randomValue) {
+                        randomCell = cellBid.cell;
+                        break;
+                    }
+                }
+                
+                CellAward award = new CellAward(bidder, randomCell);
+                packet.payload.awards.add(award);
+                packet.addSoldCell(randomCell);
+            }
         }
         
         cellReceiveData(packet);

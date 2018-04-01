@@ -40,7 +40,7 @@ public class Ignite extends SimState{
 	public ObjectGrid2D forest;
 
 	/* simulation params */
-	public int numUAVs = 5; //number of mavs involved in the simulation
+	public int numUAVs = 2; //number of mavs involved in the simulation
 	public Bag UAVs; // all the agents in the simulation. Bag size is numMavs    
 
 	public static int height = 60; //size of the forest
@@ -80,6 +80,18 @@ public class Ignite extends SimState{
 			for(int h=0; h<height; h++){
 				WorldCell cell = (WorldCell) forest.field[w][h];
                                 if(cell.type.equals(CellType.FIRE))
+                                    ret++;
+			}
+		}
+            return ret;
+        }
+        
+        public int cellsSaved() {
+            int ret = 0;
+            for(int w=0; w<width; w++){
+			for(int h=0; h<height; h++){
+				WorldCell cell = (WorldCell) forest.field[w][h];
+                                if(cell.type.equals(CellType.NORMAL) || cell.type.equals(CellType.EXTINGUISHED) )
                                     ret++;
 			}
 		}
@@ -163,7 +175,7 @@ public class Ignite extends SimState{
 		tasks = new LinkedList<>();
 		
 		//generate fires
-		int fires = 20;
+		int fires = 5;
 		for(int l=0; l<fires; l++){
 			Int2D fireCenter;
 			Int2D nextLocation;

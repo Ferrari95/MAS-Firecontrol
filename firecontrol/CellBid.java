@@ -1,20 +1,52 @@
 package sim.app.firecontrol;
 
 import java.lang.Math;
+import java.util.Comparator;
 import java.util.LinkedList;
+import java.util.PriorityQueue;
 import sim.util.Double2D;
 import sim.util.Double3D;
 
 public class CellBid {
+    
+    class Bid {
+        public double bid;
+        public double cellDistFromUav;
+        public WorldCell cell;
+        
+        public Bid(double bid, WorldCell cell, double cellDistFromUav) {
+            this.bid = bid;
+            this.cell = cell;
+            this.cellDistFromUav = cellDistFromUav;
+        }
+    }    
+    
+    class BidComparator implements Comparator {
+        @Override
+        public int compare(Object o1, Object o2) {
+            try {
+                Bid bid1 = (Bid) o1;
+                Bid bid2 = (Bid) o2;
+                if(bid1.cellDistFromUav == bid2.cellDistFromUav)
+                    return 0;
+                else if(bid1.cellDistFromUav < bid2.cellDistFromUav)
+                    return -1;
+                else
+                    return 1;
+            }
+            catch(UnsupportedOperationException e) {
+            }
+            return -1;
+        }
+    }
 
     public UAV bidder;
-    public LinkedList<Double> bids; // for the bidder, one bid for each cell
-    public LinkedList<WorldCell> cells;
-
+    PriorityQueue bids;
+    
     public CellBid(UAV bidder, Task fire) {
         this.bidder = bidder;
-        this.bids = new LinkedList<>();
-        this.cells = new LinkedList<>();
+        BidComparator comparator = new BidComparator();
+        this.bids = new PriorityQueue(1, comparator);
         this.addBids(fire);
     }
 
@@ -27,8 +59,8 @@ public class CellBid {
         forSaleCells.removeAll(bidder.soldCells);
         
         for(WorldCell iterCell: forSaleCells) {
-            if(iterCell.getType().equals(CellType.FIRE)) {
-
+            if(iterCell.getType().equals(CellType.FIRE)) {                
+                
                 // utility 1
                 double cellTheta = Math.atan2(iterCell.y - fire.centroid.y, iterCell.x - fire.centroid.x);
                 double angDispl = Math.abs(cellTheta - uavTheta);
@@ -54,11 +86,14 @@ public class CellBid {
                 double c = 7.0;
                 double u3 = Math.pow(Math.E, -c * normCellDistFromUav);
                 
+                // product of utilities
+                double p = u1 * u2 * u3;
                 
-                double u = u1 * u2 * u3;
-
-                bids.add(u);
-                cells.add(iterCell);
+                // final utility
+                double u = Math.pow(Math.E, p / 0.01);
+                
+                Bid bid = new Bid(u, iterCell, cellDistFromUav);
+                bids.offer(bid);
             }
         }
     }
